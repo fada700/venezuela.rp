@@ -81,15 +81,24 @@ serve(async (req) => {
       );
     }
 
-    // Find recipient by folio_dni or roblox_nickname
+    // Find recipient by folio_dni or roblox_nickname (separate queries to avoid OR injection)
     const query = recipient_query.trim();
-    const { data: receiver, error: recvErr } = await admin
+    let { data: receiver } = await admin
       .from("citizens")
       .select("id, balance, roblox_nickname, folio_dni")
-      .or(`folio_dni.eq.${query},roblox_nickname.ilike.${query}`)
+      .eq("folio_dni", query)
       .maybeSingle();
 
-    if (recvErr || !receiver) {
+    if (!receiver) {
+      const { data: byNick } = await admin
+        .from("citizens")
+        .select("id, balance, roblox_nickname, folio_dni")
+        .ilike("roblox_nickname", query)
+        .maybeSingle();
+      receiver = byNick;
+    }
+
+    if (!receiver) {
       return new Response(
         JSON.stringify({ error: "Destinatario no encontrado" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -103,18 +112,22 @@ serve(async (req) => {
       );
     }
 
-    // Update balances
+    // Debit sender
     const { error: debitErr } = await admin
       .from("citizens")
       .update({ balance: sender.balance - amount })
       .eq("id", sender.id);
     if (debitErr) throw debitErr;
 
+    // Credit receiver (rollback debit on failure to prevent fund loss)
     const { error: creditErr } = await admin
       .from("citizens")
       .update({ balance: receiver.balance + amount })
       .eq("id", receiver.id);
-    if (creditErr) throw creditErr;
+    if (creditErr) {
+      await admin.from("citizens").update({ balance: sender.balance }).eq("id", sender.id);
+      throw creditErr;
+    }
 
     // Create transaction record
     const desc =
