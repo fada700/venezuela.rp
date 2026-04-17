@@ -38,12 +38,32 @@ const adminTabs = [
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("officers");
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem("admin_auth") !== "true") {
-      navigate("/ad-login");
-    }
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { navigate("/ad-login"); return; }
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!roleData) { navigate("/ad-login"); return; }
+      sessionStorage.setItem("admin_auth", "true");
+      setAuthChecked(true);
+    };
+    check();
   }, [navigate]);
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
