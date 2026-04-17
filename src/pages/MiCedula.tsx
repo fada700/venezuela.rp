@@ -30,7 +30,7 @@ export default function MiCedula() {
             <Shield className="h-10 w-10 text-muted-foreground" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">No tienes cédula registrada</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Crea tu cédula de identidad para acceder a todos los servicios de RCDU</p>
+          <p className="mt-2 text-sm text-muted-foreground">Crea tu cédula de identidad para acceder a todos los servicios de Venezuela RP</p>
           <button
             onClick={() => navigate("/onboarding")}
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"

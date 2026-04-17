@@ -24,8 +24,7 @@ type CitizenOption = {
   roblox_nickname: string; folio_dni: string;
 };
 
-const RANGOS = ["Cadete", "Oficial", "Detective", "Sargento", "Teniente", "Capitán", "Comandante", "Jefe"];
-const DEPARTAMENTOS = ["RCPD", "RCSD", "FBI", "DEA", "EMS"];
+const DEPARTAMENTOS = ["PNB", "GNB"];
 const STORE_CATEGORIES = ["Concesionario", "Objetos", "Armas", "Ilícito", "Licencias"];
 const PROPERTY_TYPES = ["vivienda", "negocio"];
 
@@ -115,8 +114,8 @@ function OfficerManager() {
   const [newPlaca, setNewPlaca] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [newRango, setNewRango] = useState("Cadete");
-  const [newDepto, setNewDepto] = useState("RCPD");
+  const [newRango, setNewRango] = useState("");
+  const [newDepto, setNewDepto] = useState("PNB");
   const [newSalario, setNewSalario] = useState("2500");
   const [creating, setCreating] = useState(false);
 
@@ -248,7 +247,7 @@ function OfficerManager() {
               </div>
             </div>
             <div><label className="text-sm text-muted-foreground mb-1 block">Rango</label>
-              <Select value={newRango} onValueChange={setNewRango}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{RANGOS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
+              <Input placeholder="Ej: Comisario, Sargento, Comandante…" value={newRango} onChange={e => setNewRango(e.target.value)} /></div>
             <div><label className="text-sm text-muted-foreground mb-1 block">Departamento</label>
               <Select value={newDepto} onValueChange={setNewDepto}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DEPARTAMENTOS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
             <div><label className="text-sm text-muted-foreground mb-1 block">Salario Semanal</label><Input type="number" value={newSalario} onChange={e => setNewSalario(e.target.value)} /></div>
@@ -286,7 +285,7 @@ function OfficerManager() {
                         : <span className="px-2 py-1 rounded bg-primary/10 text-primary text-sm font-mono">{o.placa}</span>}
                     </td>
                     <td className="px-4 py-3">
-                      {editingId === o.id ? <Select value={editData.rango} onValueChange={v => setEditData({...editData, rango: v})}><SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger><SelectContent>{RANGOS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select>
+                      {editingId === o.id ? <Input value={editData.rango || ""} onChange={e => setEditData({...editData, rango: e.target.value})} className="h-8 w-32" />
                         : <span className="text-sm">{o.rango}</span>}
                     </td>
                     <td className="px-4 py-3">

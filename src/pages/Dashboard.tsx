@@ -89,7 +89,7 @@ export default function Dashboard() {
             <p className="mt-1 text-sm text-muted-foreground capitalize">{dateStr}</p>
             <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              En línea · RCDU
+              En línea · VNZRP
             </span>
           </div>
           <div className="text-right">
