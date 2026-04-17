@@ -418,15 +418,42 @@ function PropertyManager() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const [filterTipo, setFilterTipo] = useState<string>("todos");
+  const [filterEstado, setFilterEstado] = useState<string>("todos");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"nuevos" | "precio_asc" | "precio_desc">("nuevos");
   const [newProp, setNewProp] = useState({ nombre: "", direccion: "", precio: "", impuesto_mensual: "0", tipo: "vivienda", imagen_url: "" });
 
   const fetchProperties = async () => {
     setLoading(true);
-    const { data } = await supabase.from("properties").select("*, citizens:owner_citizen_id(roblox_nickname)").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("properties")
+      .select("*, citizens:owner_citizen_id(roblox_nickname, nombre, apellido_paterno)")
+      .order("created_at", { ascending: false });
     setProperties(data || []);
     setLoading(false);
   };
   useEffect(() => { fetchProperties(); }, []);
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error("Imagen máx 5MB"); return; }
+    setUploadingImg(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `properties/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("evidence").upload(path, file);
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("evidence").getPublicUrl(path);
+      setNewProp({ ...newProp, imagen_url: pub.publicUrl });
+      toast.success("Imagen subida");
+    } catch (err: any) {
+      toast.error(err.message || "Error al subir imagen");
+    } finally {
+      setUploadingImg(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!newProp.nombre || !newProp.direccion || !newProp.precio) { toast.error("Completa nombre, dirección y precio"); return; }
@@ -437,7 +464,12 @@ function PropertyManager() {
       tipo: newProp.tipo, imagen_url: newProp.imagen_url || null,
     });
     if (error) toast.error(error.message);
-    else { toast.success("Propiedad creada"); setShowCreate(false); setNewProp({ nombre: "", direccion: "", precio: "", impuesto_mensual: "0", tipo: "vivienda", imagen_url: "" }); fetchProperties(); }
+    else {
+      toast.success("Propiedad creada");
+      setShowCreate(false);
+      setNewProp({ nombre: "", direccion: "", precio: "", impuesto_mensual: "0", tipo: "vivienda", imagen_url: "" });
+      fetchProperties();
+    }
     setCreating(false);
   };
 
@@ -447,54 +479,174 @@ function PropertyManager() {
     toast.success("Eliminada"); fetchProperties();
   };
 
+  const releaseProperty = async (id: string) => {
+    if (!confirm("¿Liberar esta propiedad? El propietario actual la perderá.")) return;
+    const { error } = await supabase.from("properties")
+      .update({ owner_citizen_id: null, disponible: true })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Propiedad liberada"); fetchProperties();
+  };
+
+  let filtered = properties.filter(p => {
+    if (filterTipo !== "todos" && p.tipo !== filterTipo) return false;
+    if (filterEstado === "disponibles" && !p.disponible) return false;
+    if (filterEstado === "vendidas" && p.disponible) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!p.nombre.toLowerCase().includes(q) && !p.direccion.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  filtered = [...filtered].sort((a, b) => {
+    if (sortBy === "precio_asc") return a.precio - b.precio;
+    if (sortBy === "precio_desc") return b.precio - a.precio;
+    return 0;
+  });
+
+  const stats = {
+    total: properties.length,
+    casas: properties.filter(p => p.tipo === "vivienda").length,
+    negocios: properties.filter(p => p.tipo === "negocio").length,
+    disponibles: properties.filter(p => p.disponible).length,
+    vendidas: properties.filter(p => !p.disponible).length,
+    valor_total: properties.reduce((s, p) => s + (p.precio || 0), 0),
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-bold flex items-center gap-2"><Home className="h-5 w-5 text-primary" /> Propiedades ({properties.length})</h2>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-card border border-border rounded-xl p-4"><p className="text-xl font-bold text-primary">{stats.total}</p><p className="text-[10px] text-muted-foreground uppercase">Total</p></div>
+        <div className="bg-card border border-border rounded-xl p-4"><p className="text-xl font-bold">{stats.casas}</p><p className="text-[10px] text-muted-foreground uppercase">Casas</p></div>
+        <div className="bg-card border border-border rounded-xl p-4"><p className="text-xl font-bold">{stats.negocios}</p><p className="text-[10px] text-muted-foreground uppercase">Negocios</p></div>
+        <div className="bg-card border border-border rounded-xl p-4"><p className="text-xl font-bold text-accent">{stats.disponibles}</p><p className="text-[10px] text-muted-foreground uppercase">Disponibles</p></div>
+        <div className="bg-card border border-border rounded-xl p-4"><p className="text-xl font-bold text-destructive">{stats.vendidas}</p><p className="text-[10px] text-muted-foreground uppercase">Vendidas</p></div>
+        <div className="bg-card border border-border rounded-xl p-4"><p className="text-sm font-bold text-warning">{formatMoney(stats.valor_total)}</p><p className="text-[10px] text-muted-foreground uppercase">Valor total</p></div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h2 className="text-lg font-bold flex items-center gap-2"><Home className="h-5 w-5 text-primary" /> Gestión de Propiedades</h2>
         <Button onClick={() => setShowCreate(!showCreate)} className="gap-2"><Plus className="h-4 w-4" /> Nueva Propiedad</Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nombre o dirección..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+        </div>
+        <Select value={filterTipo} onValueChange={setFilterTipo}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los tipos</SelectItem>
+            <SelectItem value="vivienda">Casas</SelectItem>
+            <SelectItem value="negocio">Negocios</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterEstado} onValueChange={setFilterEstado}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los estados</SelectItem>
+            <SelectItem value="disponibles">Disponibles</SelectItem>
+            <SelectItem value="vendidas">Vendidas</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="nuevos">Más recientes</SelectItem>
+            <SelectItem value="precio_asc">Precio ↑</SelectItem>
+            <SelectItem value="precio_desc">Precio ↓</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {showCreate && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-xl p-6">
+          <h3 className="font-semibold mb-4">Nueva Propiedad</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className="text-sm text-muted-foreground mb-1 block">Nombre</label><Input value={newProp.nombre} onChange={e => setNewProp({...newProp, nombre: e.target.value})} /></div>
-            <div><label className="text-sm text-muted-foreground mb-1 block">Dirección</label><Input value={newProp.direccion} onChange={e => setNewProp({...newProp, direccion: e.target.value})} /></div>
+            <div><label className="text-sm text-muted-foreground mb-1 block">Nombre</label><Input value={newProp.nombre} onChange={e => setNewProp({...newProp, nombre: e.target.value})} placeholder="Casa Vista al Mar" /></div>
+            <div><label className="text-sm text-muted-foreground mb-1 block">Dirección</label><Input value={newProp.direccion} onChange={e => setNewProp({...newProp, direccion: e.target.value})} placeholder="Av. Principal 123" /></div>
             <div><label className="text-sm text-muted-foreground mb-1 block">Tipo</label>
-              <Select value={newProp.tipo} onValueChange={v => setNewProp({...newProp, tipo: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PROPERTY_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent></Select></div>
+              <Select value={newProp.tipo} onValueChange={v => setNewProp({...newProp, tipo: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vivienda">Casa / Vivienda</SelectItem>
+                  <SelectItem value="negocio">Negocio</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div><label className="text-sm text-muted-foreground mb-1 block">Precio ($)</label><Input type="number" value={newProp.precio} onChange={e => setNewProp({...newProp, precio: e.target.value})} /></div>
             <div><label className="text-sm text-muted-foreground mb-1 block">Impuesto Mensual ($)</label><Input type="number" value={newProp.impuesto_mensual} onChange={e => setNewProp({...newProp, impuesto_mensual: e.target.value})} /></div>
-            <div><label className="text-sm text-muted-foreground mb-1 block">URL Imagen</label><Input value={newProp.imagen_url} onChange={e => setNewProp({...newProp, imagen_url: e.target.value})} placeholder="https://..." /></div>
+            <div className="md:col-span-3">
+              <label className="text-sm text-muted-foreground mb-1 block">Imagen</label>
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <div className="flex-1 w-full">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingImg}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">O pega una URL abajo. Máx 5MB.</p>
+                  <Input className="mt-2" value={newProp.imagen_url} onChange={e => setNewProp({...newProp, imagen_url: e.target.value})} placeholder="https://..." />
+                </div>
+                {newProp.imagen_url && (
+                  <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-border">
+                    <img src={newProp.imagen_url} alt="" className="h-full w-full object-cover" />
+                    <button onClick={() => setNewProp({...newProp, imagen_url: ""})} className="absolute top-1 right-1 bg-destructive/80 text-destructive-foreground rounded-full p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {uploadingImg && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+              </div>
+            </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={creating}>{creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Crear</Button>
+            <Button onClick={handleCreate} disabled={creating || uploadingImg}>{creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Crear</Button>
           </div>
         </motion.div>
       )}
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : filtered.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground"><Home className="mx-auto h-10 w-10 mb-2 opacity-30" />Sin propiedades</div>
+      ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {properties.map(p => (
-            <div key={p.id} className={`bg-card border rounded-xl overflow-hidden relative group ${p.disponible ? "border-border" : "border-destructive/30"}`}>
-              <button onClick={() => deleteProperty(p.id)} className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-destructive/10 hover:bg-destructive/20">
-                <Trash2 className="h-3 w-3 text-destructive" />
-              </button>
-              <div className="aspect-video bg-surface-3 flex items-center justify-center overflow-hidden">
+          {filtered.map(p => (
+            <div key={p.id} className={`bg-card border rounded-xl overflow-hidden relative group flex flex-col ${p.disponible ? "border-border" : "border-destructive/30"}`}>
+              <div className="aspect-video bg-surface-3 flex items-center justify-center overflow-hidden relative">
                 {p.imagen_url ? <img src={p.imagen_url} alt="" className="h-full w-full object-cover" /> :
                   p.tipo === "negocio" ? <Building2 className="h-10 w-10 text-muted-foreground/30" /> : <Home className="h-10 w-10 text-muted-foreground/30" />}
+                <span className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${p.disponible ? "bg-accent/80 text-accent-foreground" : "bg-destructive/80 text-destructive-foreground"}`}>
+                  {p.disponible ? "Disponible" : "Vendido"}
+                </span>
+                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-bold bg-primary/80 text-primary-foreground capitalize">
+                  {p.tipo === "negocio" ? "Negocio" : "Casa"}
+                </span>
               </div>
-              <div className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-semibold">{p.nombre}</h3>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${p.disponible ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`}>
-                    {p.disponible ? "Disponible" : "Vendido"}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">{p.direccion} · <span className="capitalize">{p.tipo}</span></p>
-                <p className="text-sm font-bold text-accent mt-1">{formatMoney(p.precio)}</p>
+              <div className="p-4 flex-1 flex flex-col">
+                <h3 className="text-sm font-semibold">{p.nombre}</h3>
+                <p className="text-xs text-muted-foreground">{p.direccion}</p>
+                <p className="text-sm font-bold text-accent mt-2">{formatMoney(p.precio)}</p>
+                {p.impuesto_mensual > 0 && (
+                  <p className="text-[10px] text-muted-foreground">Impuesto: {formatMoney(p.impuesto_mensual)}/mes</p>
+                )}
                 {!p.disponible && p.citizens?.roblox_nickname && (
                   <p className="text-xs text-destructive mt-1">Propietario: {p.citizens.roblox_nickname}</p>
                 )}
+                <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
+                  {!p.disponible && (
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => releaseProperty(p.id)}>
+                      Liberar
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => deleteProperty(p.id)}>
+                    <Trash2 className="h-3 w-3 mr-1 text-destructive" /> Eliminar
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
