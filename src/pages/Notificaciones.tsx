@@ -43,11 +43,16 @@ export default function Notificaciones() {
   const payFine = async (fine: any) => {
     setPayingFine(fine.id);
     try {
-      const { error } = await supabase.from("fines").update({ pagada: true }).eq("id", fine.id);
+      const { data, error } = await supabase.functions.invoke("pay-fine", {
+        body: { fine_id: fine.id },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success(`Multa de ${formatMoney(fine.monto)} pagada`);
       queryClient.invalidateQueries({ queryKey: ["fines"] });
       queryClient.invalidateQueries({ queryKey: ["citizen"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     } catch (err: any) {
       toast.error(err.message || "Error al pagar multa");
     } finally {
