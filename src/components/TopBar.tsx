@@ -2,6 +2,8 @@ import { Search, Bell, Power } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCitizen } from "@/hooks/useData";
 import { useNavigate } from "react-router-dom";
+import { robloxAvatar } from "@/lib/avatar";
+import logoIcon from "@/assets/logo-vnzrp-icon.png";
 
 export default function TopBar() {
   const { user, signOut } = useAuth();
@@ -11,6 +13,7 @@ export default function TopBar() {
   const displayName = citizen?.roblox_nickname || user?.user_metadata?.discord_username || "Usuario";
   const folio = citizen?.folio_dni || "—";
   const initials = displayName.slice(0, 2).toUpperCase();
+  const avatar = robloxAvatar({ roblox_id: citizen?.roblox_id, roblox_nickname: citizen?.roblox_nickname, fallback: citizen?.avatar_url });
 
   const handleSignOut = async () => {
     await signOut();
@@ -20,9 +23,8 @@ export default function TopBar() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl px-6">
       <div className="flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-accent animate-pulse-glow" />
-        <span className="text-sm font-bold text-foreground">RCDU</span>
-        <span className="text-xs text-muted-foreground">| Portal de USUARIO</span>
+        <img src={logoIcon} alt="VNZRP" className="h-7 w-auto object-contain" />
+        <span className="text-xs text-muted-foreground">| Portal Ciudadano</span>
       </div>
 
       <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-1.5 w-80">
@@ -42,8 +44,8 @@ export default function TopBar() {
           <Bell className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
-          {citizen?.avatar_url ? (
-            <img src={citizen.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+          {avatar ? (
+            <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover bg-surface-3" />
           ) : (
             <div className="h-8 w-8 rounded-full bg-surface-3 flex items-center justify-center text-xs font-bold text-foreground">
               {initials}

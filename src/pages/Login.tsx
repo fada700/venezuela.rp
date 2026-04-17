@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Shield, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import logoVnzrp from "@/assets/logo-vnzrp.png";
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -106,10 +107,7 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-            <Shield className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground">Venezuela RP</h1>
+          <img src={logoVnzrp} alt="VNZRP" className="mx-auto mb-3 h-24 w-auto object-contain" />
           <p className="mt-1 text-sm text-muted-foreground">Venezuela Roleplay · Portal Ciudadano</p>
         </div>
 
@@ -144,7 +142,7 @@ export default function Login() {
           </button>
 
           <p className="text-center text-[10px] text-muted-foreground">
-            Al iniciar sesión, aceptas las normas del servidor RCDU
+            Al iniciar sesión, aceptas las normas del servidor VNZRP
           </p>
         </div>
 
