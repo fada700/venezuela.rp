@@ -12,6 +12,7 @@ import StorePage from "./pages/StorePage";
 import Notificaciones from "./pages/Notificaciones";
 import Emergencias from "./pages/Emergencias";
 import Inventario from "./pages/Inventario";
+import Propiedades from "./pages/Propiedades";
 import Expediente from "./pages/Expediente";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/notificaciones" element={<Notificaciones />} />
         <Route path="/emergencias" element={<Emergencias />} />
         <Route path="/inventario" element={<Inventario />} />
+        <Route path="/propiedades" element={<Propiedades />} />
         <Route path="/expediente" element={<Expediente />} />
       </Route>
       <Route path="*" element={<NotFound />} />
