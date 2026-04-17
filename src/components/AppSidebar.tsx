@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCitizen } from "@/hooks/useData";
 import { useAuth } from "@/contexts/AuthContext";
+import { robloxAvatar } from "@/lib/avatar";
 import {
   LayoutDashboard,
   Bell,
@@ -41,14 +42,15 @@ export default function AppSidebar() {
 
   const displayName = citizen?.roblox_nickname || user?.user_metadata?.discord_username || "Usuario";
   const initials = displayName.slice(0, 2).toUpperCase();
+  const avatar = robloxAvatar({ roblox_id: citizen?.roblox_id, roblox_nickname: citizen?.roblox_nickname, fallback: citizen?.avatar_url });
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col border-r border-border bg-sidebar">
       <div className="border-b border-border p-4">
         <div className="flex items-center gap-3">
           <div className="relative">
-            {citizen?.avatar_url ? (
-              <img src={citizen.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+            {avatar ? (
+              <img src={avatar} alt="" className="h-10 w-10 rounded-full object-cover bg-surface-3" />
             ) : (
               <div className="h-10 w-10 rounded-full bg-surface-3 flex items-center justify-center text-sm font-bold text-foreground">
                 {initials}

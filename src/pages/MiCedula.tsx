@@ -2,10 +2,12 @@ import { motion } from "framer-motion";
 import { Shield, Loader2, Plus } from "lucide-react";
 import { useCitizen } from "@/hooks/useData";
 import { useNavigate } from "react-router-dom";
+import { robloxAvatar } from "@/lib/avatar";
 
 export default function MiCedula() {
   const { data: citizen, isLoading } = useCitizen();
   const navigate = useNavigate();
+  const avatar = robloxAvatar({ roblox_id: citizen?.roblox_id, roblox_nickname: citizen?.roblox_nickname });
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -65,8 +67,8 @@ export default function MiCedula() {
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1">
               <div className="aspect-[3/4] rounded-lg bg-surface-4 border border-border flex items-center justify-center overflow-hidden">
-                {citizen.avatar_url ? (
-                  <img src={citizen.avatar_url} alt="" className="h-full w-full object-cover" />
+                {avatar ? (
+                  <img src={avatar} alt="Avatar Roblox" className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-16 w-16 rounded-full bg-surface-3 flex items-center justify-center text-xl font-bold text-foreground">
                     {citizen.nombre.charAt(0)}{citizen.apellido_paterno.charAt(0)}
@@ -108,7 +110,7 @@ export default function MiCedula() {
 
           <div className="mt-4 pt-3 border-t border-border">
             <p className="text-center text-[9px] text-muted-foreground">
-              Venezuela Roleplay · Cédula de Identidad Venezolana · Uso exclusivo plataforma
+              Venezuela RP · Cédula de Identidad Venezolana · Uso exclusivo plataforma
             </p>
           </div>
         </div>
